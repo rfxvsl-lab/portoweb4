@@ -1,205 +1,194 @@
-// ===================================
-// MADELYN TORFF PORTFOLIO - JavaScript
-// ===================================
+const pages = {
+    home: document.getElementById('home-page'),
+    about: document.getElementById('about-page'),
+};
 
-// ===================================
-// 1. MOBILE MENU FUNCTIONALITY
-// ===================================
-function initMobileMenu() {
-    const mobileMenuBtn = document.querySelector('[data-mobile-menu-btn]');
-    const mobileMenu = document.querySelector('[data-mobile-menu]');
-    const mobileLinks = mobileMenu ? mobileMenu.querySelectorAll('a, button') : [];
+const siteNav = document.querySelector('.site-nav');
+const mobileMenu = document.querySelector('[data-mobile-menu]');
+const mobileMenuBtn = document.querySelector('[data-mobile-menu-btn]');
+const navLinks = document.querySelectorAll('[data-page-link]');
+const desktopNavButtons = document.querySelectorAll('.nav-link');
 
-    if (!mobileMenuBtn || !mobileMenu) return;
+function refreshIcons() {
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
 
-    // Toggle menu on button click
-    mobileMenuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        mobileMenu.classList.toggle('hidden');
-        mobileMenu.style.display = mobileMenu.classList.contains('hidden') ? 'none' : 'block';
+function closeMobileMenu() {
+    if (!mobileMenu || !mobileMenuBtn) return;
+
+    mobileMenu.hidden = true;
+    mobileMenuBtn.setAttribute('aria-expanded', 'false');
+    siteNav?.classList.remove('menu-active');
+    document.body.classList.remove('menu-open');
+}
+
+function toggleMobileMenu() {
+    if (!mobileMenu || !mobileMenuBtn) return;
+
+    const willOpen = mobileMenu.hidden;
+    mobileMenu.hidden = !willOpen;
+    mobileMenuBtn.setAttribute('aria-expanded', String(willOpen));
+    siteNav?.classList.toggle('menu-active', willOpen);
+    document.body.classList.toggle('menu-open', willOpen);
+}
+
+function setActiveNavigation(pageName, sectionId) {
+    desktopNavButtons.forEach((button) => button.classList.remove('active-nav'));
+
+    if (pageName === 'about') {
+        document.getElementById('nav-about')?.classList.add('active-nav');
+        return;
+    }
+
+    if (sectionId === 'contact-section') {
+        document.getElementById('nav-contact')?.classList.add('active-nav');
+    } else {
+        document.getElementById('nav-projects')?.classList.add('active-nav');
+    }
+}
+
+function scrollToSection(sectionId) {
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+
+    const navHeight = siteNav?.offsetHeight || 0;
+    const top = target.getBoundingClientRect().top + window.scrollY - navHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+}
+
+function switchPage(pageName, sectionId = null) {
+    const requestedPage = pages[pageName] ? pageName : 'home';
+
+    Object.entries(pages).forEach(([name, page]) => {
+        const isActive = name === requestedPage;
+        page.classList.toggle('hidden-section', !isActive);
+        page.setAttribute('aria-hidden', String(!isActive));
     });
 
-    // Close menu when link is clicked
-    mobileLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            mobileMenu.classList.add('hidden');
-            mobileMenu.style.display = 'none';
+    closeMobileMenu();
+    setActiveNavigation(requestedPage, sectionId);
+
+    if (sectionId) {
+        window.setTimeout(() => scrollToSection(sectionId), 80);
+    } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    refreshIcons();
+}
+
+function initNavigation() {
+    mobileMenuBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleMobileMenu();
+    });
+
+    navLinks.forEach((link) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            const pageName = link.dataset.pageLink || 'home';
+            const sectionId = link.dataset.scrollTarget || null;
+            switchPage(pageName, sectionId);
         });
     });
 
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!mobileMenu.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-            mobileMenu.classList.add('hidden');
-            mobileMenu.style.display = 'none';
+    document.addEventListener('click', (event) => {
+        if (!mobileMenu || mobileMenu.hidden) return;
+        if (!mobileMenu.contains(event.target) && !mobileMenuBtn?.contains(event.target)) {
+            closeMobileMenu();
         }
     });
 
-    // Close menu when scrolling
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 900) closeMobileMenu();
+    });
+
     window.addEventListener('scroll', () => {
-        mobileMenu.classList.add('hidden');
-        mobileMenu.style.display = 'none';
-    });
+        siteNav?.classList.toggle('nav-scrolled', window.scrollY > 8);
+    }, { passive: true });
 }
 
-// ===================================
-// 2. SMOOTH SCROLLING WITH OFFSET
-// ===================================
-function initSmoothScroll() {
-    const navLinks = document.querySelectorAll('a[href^="#"]');
-    
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            // Check if it's an internal link
-            const href = link.getAttribute('href');
-            if (href.startsWith('#') && href.length > 1) {
-                e.preventDefault();
-                const targetId = href;
-                const targetElement = document.querySelector(targetId);
-                
-                if (targetElement) {
-                    const headerOffset = 100;
-                    const elementPosition = targetElement.getBoundingClientRect().top;
-                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                    
-                    window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
-                    });
-                }
+function initProjectLinks() {
+    document.querySelectorAll('a[href^="#"]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            const targetId = link.getAttribute('href')?.slice(1);
+            if (!targetId) return;
+
+            event.preventDefault();
+            if (pages.home.classList.contains('hidden-section')) {
+                switchPage('home', targetId);
+            } else {
+                scrollToSection(targetId);
             }
         });
     });
 }
 
-// ===================================
-// 3. FORM HANDLING
-// ===================================
-function initFormHandling() {
-    const forms = document.querySelectorAll('form');
+function initContactForm() {
+    document.querySelectorAll('form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const name = String(formData.get('name') || '').trim();
+            const email = String(formData.get('email') || '').trim();
+            const message = String(formData.get('message') || '').trim();
+            const existingMessage = form.querySelector('.form-message');
+            existingMessage?.remove();
 
-    forms.forEach(form => {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
+            const feedback = document.createElement('p');
+            feedback.className = 'form-message';
 
-            const nameInput = form.querySelector('input[type="text"]');
-            const emailInput = form.querySelector('input[type="email"]');
-            const messageInput = form.querySelector('textarea');
-
-            // Simple validation
-            if (!nameInput.value.trim() || !emailInput.value.trim() || !messageInput.value.trim()) {
-                alert('Please fill in all fields');
+            if (!name || !email || !message) {
+                feedback.textContent = 'Mohon lengkapi nama, email, dan pesan terlebih dahulu.';
+                form.appendChild(feedback);
                 return;
             }
 
-            if (!emailInput.value.includes('@')) {
-                alert('Please enter a valid email');
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                feedback.textContent = 'Mohon masukkan alamat email yang valid.';
+                form.appendChild(feedback);
                 return;
             }
 
-            // Show success message
-            const successMessage = document.createElement('div');
-            successMessage.style.cssText = `
-                background-color: #FDC435;
-                color: #25282B;
-                padding: 15px;
-                border-radius: 8px;
-                margin-top: 15px;
-                text-align: center;
-                font-weight: 600;
-                animation: fadeInUp 0.3s ease;
-            `;
-            successMessage.textContent = '✓ Message sent successfully!';
-            
-            form.appendChild(successMessage);
+            feedback.textContent = 'Terima kasih! Pesan Anda siap dikirim.';
+            form.appendChild(feedback);
             form.reset();
-
-            setTimeout(() => {
-                successMessage.remove();
-            }, 4000);
         });
     });
 }
 
-// ===================================
-// 4. SCROLL REVEAL ANIMATION
-// ===================================
-function initScrollReveal() {
-    const revealElements = document.querySelectorAll('.project-card, [data-reveal]');
+function initRevealAnimation() {
+    const revealElements = document.querySelectorAll('[data-reveal]');
 
-    if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.1 });
+    if (!('IntersectionObserver' in window)) {
+        revealElements.forEach((element) => element.classList.add('is-visible'));
+        return;
+    }
 
-        revealElements.forEach(element => {
-            element.style.opacity = '0';
-            element.style.transform = 'translateY(20px)';
-            element.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(element);
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+            }
         });
-    }
+    }, { threshold: 0.16 });
+
+    revealElements.forEach((element) => observer.observe(element));
 }
 
-// ===================================
-// 5. PAGE SWITCHING ENHANCEMENT
-// ===================================
-function enhanceSwitchPage() {
-    // Store original switchPage function
-    const originalSwitchPage = window.switchPage;
-    
-    // Override with enhanced version
-    window.switchPage = function(pageName, sectionId = null) {
-        // Call original function
-        if (originalSwitchPage) {
-            originalSwitchPage(pageName, sectionId);
-        }
-        
-        // Close mobile menu if open
-        const mobileMenu = document.querySelector('[data-mobile-menu]');
-        if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
-            mobileMenu.classList.add('hidden');
-            mobileMenu.style.display = 'none';
-        }
-        
-        // Lucide icons reinitialize
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    };
+function init() {
+    initNavigation();
+    initProjectLinks();
+    initContactForm();
+    initRevealAnimation();
+    refreshIcons();
 }
 
-// ===================================
-// 6. INITIALIZE ALL FUNCTIONS
-// ===================================
-function initAll() {
-    initMobileMenu();
-    initSmoothScroll();
-    initFormHandling();
-    initScrollReveal();
-    enhanceSwitchPage();
-    
-    console.log('✓ All portfolio functions initialized successfully');
-}
-
-// ===================================
-// 7. RUN ON PAGE LOAD
-// ===================================
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAll);
+    document.addEventListener('DOMContentLoaded', init);
 } else {
-    initAll();
+    init();
 }
-
-// Reinitialize on page switch (for Lucide icons)
-window.addEventListener('load', () => {
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-});
